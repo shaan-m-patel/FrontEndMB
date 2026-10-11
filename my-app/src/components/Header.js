@@ -1,53 +1,32 @@
+'use client';
 
-
-"use client"; // Ensure this is a Client Component
-
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useSession } from '../lib/useSession';
 
 const Header = () => {
     const router = useRouter();
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [userRole, setUserRole] = useState(null);
+    const session = useSession();
+    const userRole = session?.role || null;
+    const isLoggedIn = Boolean(userRole);
 
-    useEffect(() => {
-        const updateLoginStatus = () => {
-            if (typeof window !== "undefined") {
-                const role = localStorage.getItem("userRole");
-                setIsLoggedIn(!!role); // Update logged-in state based on role existence
-                setUserRole(role); // Store the user's role
-            }
-        };
-
-        // Check localStorage for user role to determine login status on mount
-        updateLoginStatus();
-
-        // Listen for the custom 'login' event
-        window.addEventListener("login", updateLoginStatus);
-
-        // Clean up the event listener on component unmount
-        return () => {
-            window.removeEventListener("login", updateLoginStatus);
-        };
-    }, []);
-
-    // Function to handle logout
-    const handleLogout = () => {
-        if (typeof window !== "undefined") {
-            localStorage.removeItem("userRole"); // Clear user role
-            setIsLoggedIn(false); // Update logged-in state
-            setUserRole(null); // Clear the user's role
-            router.push("/login"); // Redirect to login page
-        }
+    const handleLogout = async () => {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        localStorage.removeItem('password');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('email');
+        localStorage.removeItem('rememberMe');
+        window.dispatchEvent(new Event('login'));
+        router.push('/login');
     };
 
     return (
         <header className="bg-gray-800 p-4">
             <div className="container mx-auto flex justify-between items-center">
                 <div>
-                    {/* Disable Cinema E-Booking link if user is an admin */}
-                    {userRole === "admin" ? (
+                    {userRole === 'admin' ? (
                         <span className="text-gray-400 text-2xl font-bold cursor-not-allowed">
                             Cinema E-Booking
                         </span>
@@ -62,13 +41,13 @@ const Header = () => {
                     <ul className="flex space-x-4">
                         <li>
                             <Link
-                                href={userRole === "admin" ? "/admin" : "/"}
+                                href={userRole === 'admin' ? '/admin' : '/'}
                                 className="text-white hover:text-gray-300"
                             >
                                 Home
                             </Link>
                         </li>
-                        {!isLoggedIn ? ( // If not logged in, show Login/Register
+                        {!isLoggedIn ? (
                             <>
                                 <li>
                                     <Link href="/login" className="text-white hover:text-gray-300">
@@ -81,15 +60,14 @@ const Header = () => {
                                     </Link>
                                 </li>
                             </>
-                        ) : ( // If logged in, show additional buttons
+                        ) : (
                             <>
                                 <li>
                                     <Link href="/profile" className="text-white hover:text-gray-300">
                                         Edit Profile
                                     </Link>
                                 </li>
-                                {/* Show Order History only if the user is not an admin */}
-                                {userRole !== "admin" && (
+                                {userRole !== 'admin' && (
                                     <li>
                                         <Link href="/orderHistory" className="text-white hover:text-gray-300">
                                             Order History
@@ -114,4 +92,3 @@ const Header = () => {
 };
 
 export default Header;
-

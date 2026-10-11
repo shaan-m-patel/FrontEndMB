@@ -91,7 +91,8 @@ Once implemented, the system undergoes extensive testing:
 - **Backend**: [Express.js](https://expressjs.com/) framework for RESTful APIs.
 - **Database**: [MongoDB](https://www.mongodb.com/) for NoSQL data persistence.
 - **Authentication**: Secure login/registration using **JWT** or similar authentication methods.
-- **Payment Gateway**: Secure online payments.
+- **Payment Gateway**: Secure online payments. Card numbers and security codes are sent only to Stripe. This app stores a payment-method token and the last four digits, and it creates a booking only after the processor confirms the charge.
+- **Sessions**: Sign-in sets an httpOnly cookie. Profile, booking, checkout, and admin actions use that session. Password reset requires the single-use token from the email link. Copy `my-app/.env.example` to `my-app/.env.local` and set `SESSION_SECRET`, `APP_ORIGIN`, and the Stripe keys.
 
 ---
 

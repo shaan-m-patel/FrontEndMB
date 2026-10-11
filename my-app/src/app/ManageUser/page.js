@@ -1,11 +1,24 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import './page.css';
 
 export default function ManageUsers() {
+    const router = useRouter();
     const [users, setUsers] = useState([]);
     const [newUser, setNewUser] = useState({ name: '', email: '', registeredOn: '' });
+
+    useEffect(() => {
+        const checkAdmin = async () => {
+            const response = await fetch('/api/auth/session', { credentials: 'include' });
+            const session = await response.json().catch(() => ({}));
+            if (session?.role !== 'admin') {
+                router.push('/login');
+            }
+        };
+        checkAdmin();
+    }, [router]);
 
     // Function to add a new user to the list
     const handleAddUser = () => {

@@ -4,6 +4,7 @@
 
 import { useRouter } from 'next/navigation';
 import './page.css';
+import { toAllowedEmbedUrl, TRAILER_IFRAME_ALLOW } from '../../../lib/trailerUrl.mjs';
 
 export default function MovieDetails() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function MovieDetails() {
 
   // Fetch the movie data based on the ID (for now, using local data)
   const movie = movieDetails[id];
+  const trailerEmbedUrl = movie ? toAllowedEmbedUrl(movie.trailerUrl) : null;
 
   if (!movie) return <p>Movie not found!</p>;
 
@@ -38,12 +40,15 @@ export default function MovieDetails() {
 
       {/* Movie Trailer */}
       <div className="trailer-container">
-        <iframe
-          src={movie.trailerUrl}
-          title="Movie Trailer"
-          frameBorder="0"
-          allowFullScreen
-        ></iframe>
+        {trailerEmbedUrl && (
+          <iframe
+            src={trailerEmbedUrl}
+            title="Movie Trailer"
+            frameBorder="0"
+            allow={TRAILER_IFRAME_ALLOW}
+            allowFullScreen
+          ></iframe>
+        )}
       </div>
 
       <button className="book-button">

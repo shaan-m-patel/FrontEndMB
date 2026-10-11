@@ -15,13 +15,14 @@ const OrderHistory = () => {
     useEffect(() => {
         const fetchOrderHistory = async () => {
             try {
-                const email = localStorage.getItem("userEmail"); // Retrieve user email
-                if (!email) {
-                    router.push("/login"); // Redirect to login if email is missing
+                const sessionResponse = await fetch('/api/auth/session', { credentials: 'include' });
+                const session = await sessionResponse.json();
+                if (!session?.role) {
+                    router.push("/login");
                     return;
                 }
 
-                const bookingsData = await fetchBookingsByEmail(email);
+                const bookingsData = await fetchBookingsByEmail();
                 setBookings(bookingsData); // Update state with the fetched bookings
             } catch (err) {
                 setError(err.message);

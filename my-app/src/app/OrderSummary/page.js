@@ -1,134 +1,129 @@
-"use client";
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { readSelection, selectionQuery } from '../../lib/selection';
 
 export default function OrderSummary() {
     const router = useRouter();
-    const [order, setOrder] = useState([]);
-    const [orderTotal, setOrderTotal] = useState(0);
-    const [movieName, setMovieName] = useState('');
-    const [selectedDate, setSelectedDate] = useState('');
-    const [selectedTime, setSelectedTime] = useState('');
-    const [selectedSeats, setSelectedSeats] = useState([]);
-    const [ageCategories, setAgeCategories] = useState({});
-    const [loading, setLoading] = useState(true);
+    const [selection, setSelection] = useState(null);
+    const [quote, setQuote] = useState(null);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        const { searchParams } = new URL(window.location.href);
-
-        const movieName = searchParams.get('movieName');
-        const selectedDate = searchParams.get('selectedDate');
-        const selectedTime = searchParams.get('selectedTime');
-        const selectedSeats = JSON.parse(searchParams.get('selectedSeats') || '[]');
-        const ageCategories = JSON.parse(searchParams.get('ageCategories') || '{}');
-
-        const priceByAge = {
-            Adult: 10.00,
-            Child: 5.00,
-            Senior: 7.00,
-        };
-
-        setMovieName(movieName);
-        setSelectedDate(selectedDate);
-        setSelectedTime(selectedTime);
-        setSelectedSeats(selectedSeats);
-        setAgeCategories(ageCategories);
-
-        const orderDetails = selectedSeats.map(seat => ({
-            seat,
-            age: ageCategories[seat] || 'N/A',
-            price: priceByAge[ageCategories[seat]] || 12.00,
-        }));
-
-        setOrder(orderDetails);
-        const total = orderDetails.reduce((total, ticket) => total + ticket.price, 0);
-        setOrderTotal(total);
-
-        setLoading(false);
+        const params = new URL(window.location.href).searchParams;
+        setSelection(readSelection(params));
     }, []);
 
+    useEffect(() => {
+        if (!selection || selection.selectedSeats.length === 0) {
+            return undefined;
+        }
+        let cancelled = false;
+        const loadQuote = async () => {
+            const response = await fetch('/api/checkout/quote', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    selectedSeats: selection.selectedSeats,
+                    ageCategories: selection.ageCategories,
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || 'Unable to price these tickets');
+            }
+            if (!cancelled) {
+                setQuote(data);
+                setError('');
+            }
+        };
+        loadQuote().catch((quoteError) => {
+            if (!cancelled) {
+                setError(quoteError.message);
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [selection]);
+
     const handleDeleteTicket = (seat) => {
-        setOrder((prevOrder) => prevOrder.filter(ticket => ticket.seat !== seat));
-        const newTotal = order.reduce((total, ticket) => ticket.seat !== seat ? total + ticket.price : total, 0);
-        setOrderTotal(newTotal);
+        setQuote(null);
+        setSelection((current) => {
+            const ageCategories = { ...current.ageCategories };
+            delete ageCategories[seat];
+            return {
+                ...current,
+                selectedSeats: current.selectedSeats.filter((selected) => selected !== seat),
+                ageCategories,
+            };
+        });
     };
 
     const handleConfirmOrder = () => {
-        const orderData = {
-            order,
-            orderTotal,
-            movieName,
-            selectedDate,
-            selectedTime,
-            selectedSeats,
-            ageCategories,
-        };
-
-        const queryString = new URLSearchParams({
-            movieName,
-            selectedDate,
-            selectedTime,
-            selectedSeats: JSON.stringify(selectedSeats),
-            ageCategories: JSON.stringify(ageCategories),
-            orderData: JSON.stringify(orderData),
-        }).toString();
-
-        router.push(`/CheckoutPage?${queryString}`);
+        if (!selection || !quote) {
+            return;
+        }
+        router.push(`/CheckoutPage?${selectionQuery(selection)}`);
     };
 
-    const handleEditPurchase = () => {
-        router.back();
-    };
-
-    if (loading) {
+    if (!selection) {
         return <div className="flex justify-center items-center min-h-screen bg-gray-100 text-black">Loading...</div>;
     }
+
+    const lines = quote?.lines || [];
 
     return (
         <div className="flex flex-col items-center min-h-screen bg-gray-100 p-4 text-black">
             <div className="w-full max-w-4xl bg-white shadow-lg rounded p-6">
                 <h2 className="text-2xl font-bold mb-4">Order Summary</h2>
+                {error && <p className="text-red-500 mb-4">{error}</p>}
                 <table className="w-full border-collapse mb-4">
                     <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border px-4 py-2 text-left">Seat</th>
-                        <th className="border px-4 py-2 text-left">Age Category</th>
-                        <th className="border px-4 py-2 text-left">Price</th>
-                        <th className="border px-4 py-2 text-left">Actions</th>
-                    </tr>
+                        <tr className="bg-gray-200">
+                            <th className="border px-4 py-2 text-left">Seat</th>
+                            <th className="border px-4 py-2 text-left">Age Category</th>
+                            <th className="border px-4 py-2 text-left">Price</th>
+                            <th className="border px-4 py-2 text-left">Actions</th>
+                        </tr>
                     </thead>
                     <tbody>
-                    {order.map(({ seat, age, price }) => (
-                        <tr key={seat} className="border-b">
-                            <td className="border px-4 py-2">{seat}</td>
-                            <td className="border px-4 py-2">{age}</td>
-                            <td className="border px-4 py-2">${price.toFixed(2)}</td>
-                            <td className="border px-4 py-2">
-                                <button
-                                    onClick={() => handleDeleteTicket(seat)}
-                                    className="bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600"
-                                >
-                                    Delete
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
+                        {lines.map(({ seat, age, price }) => (
+                            <tr key={seat} className="border-b">
+                                <td className="border px-4 py-2">{seat}</td>
+                                <td className="border px-4 py-2">{age}</td>
+                                <td className="border px-4 py-2">${price.toFixed(2)}</td>
+                                <td className="border px-4 py-2">
+                                    <button
+                                        onClick={() => handleDeleteTicket(seat)}
+                                        className="bg-red-500 text-white py-1 px-2 rounded hover:bg-red-600"
+                                    >
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
                 <div className="flex justify-between items-center mb-4">
                     <span className="text-lg font-semibold">Order Total:</span>
-                    <span className="text-lg font-semibold">${orderTotal.toFixed(2)}</span>
+                    <span className="text-lg font-semibold">
+                        {quote ? `$${quote.total.toFixed(2)}` : 'Pricing...'}
+                    </span>
                 </div>
                 <div className="flex space-x-4">
                     <button
-                        onClick={handleEditPurchase}
+                        onClick={() => router.back()}
                         className="bg-yellow-500 text-white py-2 px-4 rounded hover:bg-yellow-600"
                     >
                         Edit Purchase
                     </button>
                     <button
                         onClick={handleConfirmOrder}
-                        className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+                        disabled={!quote}
+                        className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50"
                     >
                         Confirm and Checkout
                     </button>

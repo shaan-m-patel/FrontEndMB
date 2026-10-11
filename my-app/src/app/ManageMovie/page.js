@@ -1,10 +1,13 @@
 
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import "./page.css";
 import { addMovie } from "../movieService";
+import { toAllowedEmbedUrl } from "../../lib/trailerUrl.mjs";
 
 export default function ManageMovies() {
+    const router = useRouter();
     const [movies, setMovies] = useState([]);
     const [newMovie, setNewMovie] = useState({
         movieName: "",
@@ -24,10 +27,26 @@ export default function ManageMovies() {
     const [confirmationMessage, setConfirmationMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
 
+    useEffect(() => {
+        const checkAdmin = async () => {
+            const response = await fetch('/api/auth/session', { credentials: 'include' });
+            const session = await response.json().catch(() => ({}));
+            if (session?.role !== 'admin') {
+                router.push('/login');
+            }
+        };
+        checkAdmin();
+    }, [router]);
+
     const handleAddMovie = async () => {
         // Validate input fields
         if (Object.values(newMovie).some((field) => !field)) {
             setErrorMessage("Please fill in all fields.");
+            return;
+        }
+
+        if (!toAllowedEmbedUrl(newMovie.trailerUrl)) {
+            setErrorMessage("Trailer URL must be a YouTube or Vimeo link.");
             return;
         }
 

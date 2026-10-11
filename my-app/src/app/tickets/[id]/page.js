@@ -2,8 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { fetchMovieById, fetchBookings } from '../../movieService'; // Fetch bookings function
-import { createBooking } from '../../movieService';
+import { fetchMovieById, fetchBookings } from '../../movieService';
 import './page.css';
 import { useRouter } from 'next/navigation';
 import '../../globals.css';
@@ -27,13 +26,15 @@ export default function TicketPurchase({ params }) {
     ];
 
     useEffect(() => {
-        // Check if the user is logged in
-        const userRole = localStorage.getItem('userRole');
-        if (!userRole) {
-            // Redirect to login page if not logged in
-            router.push('/login');
-        }
-    }, []); // Make sure to add a dependency array to avoid infinite loops
+        const checkSession = async () => {
+            const response = await fetch('/api/auth/session', { credentials: 'include' });
+            const session = await response.json().catch(() => ({}));
+            if (!session?.role) {
+                router.push('/login');
+            }
+        };
+        checkSession();
+    }, [router]);
 
 
     useEffect(() => {
@@ -88,12 +89,11 @@ export default function TicketPurchase({ params }) {
 
 
     const handleConfirmBooking = async () => {
-        // Retrieve the user's email from localStorage
-        const email = localStorage.getItem('userEmail'); // Make sure this is set during login
-
-        if (!email) {
-            alert('User email is missing. Please log in again.');
-            router.push('/login'); // Redirect to login if email is missing
+        const response = await fetch('/api/auth/session', { credentials: 'include' });
+        const session = await response.json().catch(() => ({}));
+        if (!session?.role) {
+            alert('Please log in again.');
+            router.push('/login');
             return;
         }
 
@@ -101,15 +101,6 @@ export default function TicketPurchase({ params }) {
             alert('Please complete all selections before proceeding.');
             return;
         }
-
-        const bookingData = {
-            email, // Include the retrieved email
-            movieName: selectedMovie.movieName,
-            selectedDate,
-            selectedTime,
-            selectedSeats,
-            ageCategories,
-        };
 
         try {
             const orderData = new URLSearchParams({
