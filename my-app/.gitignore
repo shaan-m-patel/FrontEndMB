@@ -28,6 +28,9 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# server-side auth and paid-booking records
+.data/
+
 # vercel
 .vercel
 

@@ -2,16 +2,28 @@
 
 "use client";
 
-import React, { useState } from 'react';
-import { addPromotion } from '../movieService'; // Adjust the path if necessary
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { addPromotion } from '../movieService';
 import './page.css';
 
 export default function ManagePromotions() {
+    const router = useRouter();
     const [newPromotion, setNewPromotion] = useState({ title: '', discount: '', code: '', validUntil: '' });
     const [error, setError] = useState('');
-    const [confirmationMessage, setConfirmationMessage] = useState(''); // State for confirmation message
+    const [confirmationMessage, setConfirmationMessage] = useState('');
 
-    // Function to add a new promotion and display confirmation message
+    useEffect(() => {
+        const checkAdmin = async () => {
+            const response = await fetch('/api/auth/session', { credentials: 'include' });
+            const session = await response.json().catch(() => ({}));
+            if (session?.role !== 'admin') {
+                router.push('/login');
+            }
+        };
+        checkAdmin();
+    }, [router]);
+
     const handleAddPromotion = async () => {
         if (!newPromotion.title || !newPromotion.discount || !newPromotion.code || !newPromotion.validUntil) {
             alert("Please fill in all fields.");

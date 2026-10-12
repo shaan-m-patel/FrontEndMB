@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SearchBar from './search/page'; // Adjust the import as necessary
 import { fetchMovies, searchMovies } from './movieService';
+import { toAllowedEmbedUrl, TRAILER_IFRAME_ALLOW } from '../lib/trailerUrl.mjs';
 
 export default function Home() {
     const router = useRouter(); // Initialize useRouter
@@ -88,6 +89,8 @@ export default function Home() {
         </div>
     );
 
+    const trailerEmbedUrl = selectedMovie ? toAllowedEmbedUrl(selectedMovie.trailerUrl) : null;
+
     return (
         <div className="bg-gray-900 text-white min-h-screen">
             <header className="py-8 bg-dark-blue text-center text-4xl font-bold">
@@ -134,14 +137,20 @@ export default function Home() {
                                 ✖
                             </button>
                             <div className="relative pt-[56.25%] mb-6">
-                                <iframe
-                                    src={selectedMovie.trailerUrl.replace('watch?v=', 'embed/')}
-                                    title={selectedMovie.movieName}
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                    className="absolute top-0 left-0 w-full h-full rounded-lg"
-                                />
+                                {trailerEmbedUrl ? (
+                                    <iframe
+                                        src={trailerEmbedUrl}
+                                        title={selectedMovie.movieName}
+                                        frameBorder="0"
+                                        allow={TRAILER_IFRAME_ALLOW}
+                                        allowFullScreen
+                                        className="absolute top-0 left-0 w-full h-full rounded-lg"
+                                    />
+                                ) : (
+                                    <p className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                                        Trailer unavailable.
+                                    </p>
+                                )}
                             </div>
                             <h2 className="text-3xl font-bold mb-4 text-center">{selectedMovie.movieName}</h2>
                             <div className="text-lg mb-4">
